@@ -23,7 +23,7 @@ Somos Winny y Cristian. Somos amor, esfuerzo y sueños compartidos. Somos Acomó
 
 Y esto apenas comienza… ✨`;
 
-const IMAGEN_DEFAULT = "https://firebasestorage.googleapis.com/v0/b/acomodate-muebles.firebasestorage.app/o/productos%2Fprincipal_1793027796308_Captura%20de%20pantalla%202026-10-06%20a%20la(s)%2010.25.55%E2%80%AFp.m..png?alt=media&token=c827f9ba-97bb-425a-a481-40d3bffa03d3";
+const IMAGEN_DEFAULT = "https://firebasestorage.googleapis.com/v0/b/acomodate-muebles.firebasestorage.app/o/sofa-banner.jpg?alt=media&token=dd6bf266-6f9f-48ab-9ca3-7d24487c69b8";
 
 export default function NosotrosPage() {
   const [contenido, setContenido] = useState({
