@@ -7,11 +7,23 @@ import Link from 'next/link';
 export default function CarritoPage() {
   const { cart, actualizarCantidad, removerDelCarrito, vaciarCarrito, totalCarrito } = useCart();
 
-  const handleCheckoutBold = () => {
+const handleCheckoutBold = async () => {
     if (cart.length === 0) return;
-    // Reemplaza con la URL de tu Link de Pago copiado del panel de Bold
-    const boldLink = "https://checkout.bold.co/payment/LNK_TU_ID_REAL"; 
-    window.open(boldLink, '_blank');
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cart, totalCarrito }),
+      });
+
+      const data = await res.json();
+      if (data.url) {
+        window.open(data.url, '_blank');
+      }
+    } catch (error) {
+      console.error('Error al procesar el pago', error);
+    }
   };
 
   return (
