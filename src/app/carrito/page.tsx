@@ -3,28 +3,45 @@
 import { useCart } from '@/app/context/CartContext';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function CarritoPage() {
   const { cart, actualizarCantidad, removerDelCarrito, vaciarCarrito, totalCarrito } = useCart();
 
+const [loading, setLoading] = useState(false);
+
 const handleCheckoutBold = async () => {
-    if (cart.length === 0) return;
+  if (cart.length === 0 || loading) return;
 
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cart, totalCarrito }),
-      });
+  try {
+    setLoading(true);
 
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (error) {
-      console.error('Error al procesar el pago', error);
+    const res = await fetch('/api/checkout/bold', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        totalCarrito: totalCarrito,
+        orderId: `AM-${Date.now()}`, // ID único de referencia de tu tienda
+      }),
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
+      // Redirige al cliente al checkout seguro de Bold con el precio ya bloqueado
+      window.location.href = data.url;
+    } else {
+      alert('Ocurrió un error al generar la orden de pago.');
     }
-  };
+  } catch (error) {
+    console.error('Error al iniciar el pago:', error);
+    alert('No se pudo conectar con el servidor de pagos.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <main className="w-full bg-[#FDFBF7] min-h-screen pt-32 pb-24 px-6">
@@ -169,14 +186,14 @@ const handleCheckoutBold = async () => {
                   <span>${totalCarrito.toLocaleString('es-CO')} COP</span>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={handleCheckoutBold}
-                className="w-full bg-[#1A1A1A] text-white hover:bg-[#8C6D53] transition-colors py-4 rounded-xl text-xs uppercase tracking-widest font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-2"
-              >
-                <span>PAGAR</span>
-              </button>
+<button
+  type="button"
+  onClick={handleCheckoutBold}
+  disabled={loading}
+  className="w-full bg-[#1A1A1A] text-white hover:bg-[#8C6D53] transition-colors py-4 rounded-xl text-xs uppercase tracking-widest font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+>
+  <span>{loading ? 'PROCESANDO...' : 'PAGAR'}</span>
+</button>
             </div>
 
           </div>
