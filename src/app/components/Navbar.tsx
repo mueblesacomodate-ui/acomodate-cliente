@@ -16,50 +16,49 @@ export default function Navbar() {
 
   return (
     <header className="w-full bg-[#F5EFE7]/95 border-b border-[#D8C7B4]/40 sticky top-0 z-50 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
         
-        {/* Logotipo / Marca */}
-   {/* LOGOTIPO SVG */}
-<Link href="/" className="flex items-center gap-3 group">
-  <div className="w-10 h-10 flex items-center justify-center">
-    <img
-      src="/assents/logo.svg" 
-      alt="Acomódate Muebles Logo"
-      className="w-full h-full object-contain"
-    />
-  </div>
-  <div className="flex flex-col">
-    <span className="font-serif text-sm tracking-[0.25em] font-semibold text-[#1F1F1F]">
-      ACOMÓDATE
-    </span>
-    <span className="text-[9px] tracking-[0.3em] text-[#A1887F] uppercase">
-      Muebles
-    </span>
-  </div>
-</Link>
+        {/* LOGOTIPO SVG CON ESPACIADO DERECHO */}
+        <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 mr-6 lg:mr-10">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center">
+            <img
+              src="/assents/logo.svg" 
+              alt="Acomódate Muebles Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-serif text-xs sm:text-sm tracking-[0.2em] sm:tracking-[0.25em] font-semibold text-[#1F1F1F]">
+              ACOMÓDATE
+            </span>
+            <span className="text-[8px] sm:text-[9px] tracking-[0.3em] text-[#A1887F] uppercase">
+              Muebles
+            </span>
+          </div>
+        </Link>
 
         {/* Menú de Escritorio */}
-        <nav className="hidden lg:flex items-center gap-8 text-xs tracking-widest uppercase font-medium text-[#1F1F1F]/80">
+        <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-[11px] xl:text-xs tracking-wider uppercase font-medium text-[#1F1F1F]/80">
           <Link href="/categoria/salas" className="hover:text-[#5A3E2B] transition-colors">Salas</Link>
           <Link href="/categoria/comedores" className="hover:text-[#5A3E2B] transition-colors">Comedores</Link>
           <Link href="/categoria/dormitorios" className="hover:text-[#5A3E2B] transition-colors">Dormitorios</Link>
           <Link href="/categoria/sillas" className="hover:text-[#5A3E2B] transition-colors">Sillas y Poltronas</Link>
+          <Link href="/categoria/accesorios" className="hover:text-[#5A3E2B] transition-colors">Accesorios</Link>
           <Link href="/a-medida" className="hover:text-[#5A3E2B] transition-colors text-[#5A3E2B] font-semibold">A Medida</Link>
           <Link href="/proyectos" className="hover:text-[#5A3E2B] transition-colors">Proyectos</Link>
           <Link href="/nosotros" className="hover:text-[#5A3E2B] transition-colors">Nosotros</Link>
         </nav>
 
         {/* Botón Carrito, Cotización y Hamburguesa */}
-        <div className="flex items-center gap-3 md:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           
-          {/* BOTÓN / ICONO CARRITO (Escritorio y Móvil) */}
+          {/* BOTÓN / ICONO CARRITO */}
           <Link
             href="/carrito"
-            className="relative flex items-center gap-2 bg-[#1F1F1F] text-[#F5EFE7] px-4 py-2.5 rounded-full text-xs font-sans tracking-wider uppercase hover:bg-[#5A3E2B] transition-all duration-300 shadow-sm"
+            className="relative flex items-center gap-2 bg-[#1F1F1F] text-[#F5EFE7] px-3.5 sm:px-4 py-2.5 rounded-full text-xs font-sans tracking-wider uppercase hover:bg-[#5A3E2B] transition-all duration-300 shadow-sm"
           >
             <span className="text-sm">🛒</span>
 
-            {/* Badge de cantidad */}
             {totalItems > 0 && (
               <span className="absolute -top-1 -right-1 bg-[#5A3E2B] text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#F5EFE7] shadow-xs animate-scale-in">
                 {totalItems}
@@ -72,7 +71,7 @@ export default function Navbar() {
             href="https://wa.me/message/D6QREGANQXL3O1" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="hidden sm:inline-flex border border-[#1F1F1F] text-[#1F1F1F] px-5 py-2.5 rounded-full text-xs font-sans tracking-wider uppercase hover:bg-[#1F1F1F] hover:text-[#F5EFE7] transition-all duration-300 shadow-sm"
+            className="hidden sm:inline-flex border border-[#1F1F1F] text-[#1F1F1F] px-4 xl:px-5 py-2.5 rounded-full text-[11px] xl:text-xs font-sans tracking-wider uppercase hover:bg-[#1F1F1F] hover:text-[#F5EFE7] transition-all duration-300 shadow-sm"
           >
             Cotiza tu mueble
           </a>
@@ -125,6 +124,13 @@ export default function Navbar() {
             className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
           >
             Sillas y Poltronas
+          </Link>
+          <Link 
+            href="/categoria/accesorios" 
+            onClick={() => setIsOpen(false)}
+            className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
+          >
+            Accesorios
           </Link>
           <Link 
             href="/a-medida" 

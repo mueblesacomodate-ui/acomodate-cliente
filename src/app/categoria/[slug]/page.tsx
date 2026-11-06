@@ -152,51 +152,51 @@ export default function CategoriaPage({
                 </p>
               </div>
             ) : (
-           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-  {productosFiltrados.map((producto) => (
-    <Link 
-      key={producto.id} 
-      href={`/producto/${producto.id}`}
-      className="group bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 transition-all hover:shadow-md flex flex-col justify-between block cursor-pointer"
-    >
-      <div>
-        {/* Imagen del producto */}
-        <div className="relative h-72 w-full bg-gray-100 overflow-hidden">
-          <Image 
-            src={producto.imagen} 
-            alt={producto.nombre} 
-            fill 
-            className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
-          />
-        </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {productosFiltrados.map((producto) => (
+                      <Link
+                        key={producto.id}
+                        href={`/producto/${producto.id}`}
+                        className="group bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100 transition-all hover:shadow-md flex flex-col justify-between block cursor-pointer"
+                      >
+                        <div>
+                          {/* Imagen del producto */}
+                          <div className="relative h-72 w-full bg-gray-100 overflow-hidden">
+                            <Image
+                              src={producto.imagen}
+                              alt={producto.nombre}
+                              fill
+                              className="object-cover object-center group-hover:scale-105 transition-transform duration-700"
+                            />
+                          </div>
 
-        {/* Información Básica */}
-        <div className="p-6">
-          <h3 className="font-serif text-lg text-[#1A1A1A] mb-2 font-medium">
-            {producto.nombre}
-          </h3>
-          {producto.descripcion && (
-            <p className="text-xs text-gray-500 mb-4 line-clamp-2 font-light">
-              {producto.descripcion}
-            </p>
-          )}
-        </div>
-      </div>
+                          {/* Información Básica */}
+                          <div className="p-6">
+                            <h3 className="font-serif text-lg text-[#1A1A1A] mb-2 font-medium">
+                              {producto.nombre}
+                            </h3>
+                            {producto.descripcion && (
+                              <p className="text-xs text-gray-500 mb-4 line-clamp-2 font-light">
+                                {producto.descripcion}
+                              </p>
+                            )}
+                          </div>
+                        </div>
 
-      {/* Precio y Acción */}
-      <div className="p-6 pt-0">
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-          <span className="font-sans text-sm font-medium text-[#1A1A1A]">
-            ${typeof producto.precio === 'number' ? producto.precio.toLocaleString() : producto.precio}
-          </span>
-          <span className="text-xs uppercase font-medium tracking-wider text-[#8C6D53] group-hover:underline flex items-center gap-1">
-            Ver detalle →
-          </span>
-        </div>
-      </div>
-    </Link>
-  ))}
-</div>
+                        {/* Precio y Acción */}
+                        <div className="p-6 pt-0">
+                          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                            <span className="font-sans text-sm font-medium text-[#1A1A1A]">
+                              ${typeof producto.precio === 'number' ? producto.precio.toLocaleString() : producto.precio}
+                            </span>
+                            <span className="text-xs uppercase font-medium tracking-wider text-[#8C6D53] group-hover:underline flex items-center gap-1">
+                              Ver detalle →
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
             )}
           </div>
 

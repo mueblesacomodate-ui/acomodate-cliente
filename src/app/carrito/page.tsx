@@ -3,48 +3,218 @@
 import { useCart } from '@/app/context/CartContext';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+const DEPARTAMENTOS_COLOMBIA = [
+  'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bogotá D.C.', 'Bolívar',
+  'Boyacá', 'Caldas', 'Caquetá', 'Casanare', 'Cauca', 'Cesar', 'Chocó',
+  'Córdoba', 'Cundinamarca', 'Guainía', 'Guaviare', 'Huila', 'La Guajira',
+  'Magdalena', 'Meta', 'Nariño', 'Norte de Santander', 'Putumayo', 'Quindío',
+  'Risaralda', 'San Andrés y Providencia', 'Santander', 'Sucre', 'Tolima',
+  'Valle del Cauca', 'Vaupés', 'Vichada'
+];
 
 export default function CarritoPage() {
   const { cart, actualizarCantidad, removerDelCarrito, vaciarCarrito, totalCarrito } = useCart();
+  const [loadingBold, setLoadingBold] = useState(false);
+  const [loadingWp, setLoadingWp] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [numeroWhatsapp, setNumeroWhatsapp] = useState<string>('');
 
-const [loading, setLoading] = useState(false);
-
-const handleCheckoutBold = async () => {
-  if (cart.length === 0 || loading) return;
-
-  try {
-    setLoading(true);
-
-    const res = await fetch('/api/checkout/bold', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        totalCarrito: totalCarrito,
-        orderId: `AM-${Date.now()}`, // ID único de referencia de tu tienda
-      }),
-    });
-
-    const data = await res.json();
-
-    if (data.url) {
-      // Redirige al cliente al checkout seguro de Bold con el precio ya bloqueado
-      window.location.href = data.url;
-    } else {
-      alert('Ocurrió un error al generar la orden de pago.');
+  // Cargar número de WhatsApp dinámico desde Firestore
+  useEffect(() => {
+    async function obtenerWhatsapp() {
+      try {
+        const docRef = doc(db, 'configuracion', 'redes');
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().whatsapp) {
+          setNumeroWhatsapp(docSnap.data().whatsapp);
+        }
+      } catch (error) {
+        console.error('Error al cargar número de WhatsApp:', error);
+      }
     }
-  } catch (error) {
-    console.error('Error al iniciar el pago:', error);
-    alert('No se pudo conectar con el servidor de pagos.');
-  } finally {
-    setLoading(false);
-  }
-};
+    obtenerWhatsapp();
+  }, []);
+
+  // Estado del formulario de cliente y envío
+  const [formData, setFormData] = useState({
+    nombreApellido: '',
+    celular: '',
+    correo: '',
+    departamento: '',
+    ciudad: '',
+    direccion: '',
+    indicaciones: '',
+    aceptaTiempo: false,
+    aceptaTerminos: false,
+    aceptaTratamientoDatos: false,
+    esMayorEdad: false,
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData((prev) => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleProcederCheckout = () => {
+    if (cart.length === 0) return;
+    setModalOpen(true);
+  };
+
+  const validarCheckboxes = () => {
+    if (!formData.aceptaTiempo || !formData.aceptaTerminos || !formData.aceptaTratamientoDatos || !formData.esMayorEdad) {
+      alert('Debes aceptar todos los términos y declaraciones antes de continuar.');
+      return false;
+    }
+    return true;
+  };
+
+  // Función auxiliar para notificar al panel administrativo (Push Notification)
+  const enviarNotificacionPush = async (orderId: string) => {
+    try {
+      const response = await fetch('/api/notificar-pedido', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: orderId,
+          nombreCliente: formData.nombreApellido,
+          total: totalCarrito,
+        }),
+      });
+
+      const resData = await response.json();
+      console.log('Respuesta de /api/notificar-pedido:', resData);
+    } catch (err) {
+      console.error('Error al enviar la notificación push:', err);
+    }
+  };
+
+  // 1. PAGO POR BOLD
+  const handlePagarBold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validarCheckboxes()) return;
+
+    try {
+      setLoadingBold(true);
+
+      const orderId = `AM-${Date.now()}`;
+
+      // Guardar pedido en Firestore con fecha y hora
+      await addDoc(collection(db, 'pedidos'), {
+        orderId,
+        cliente: formData,
+        items: cart,
+        total: totalCarrito,
+        metodoPago: 'Bold',
+        estado: 'Pendiente',
+        fechaCreacion: serverTimestamp(),
+        fechaTexto: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
+      });
+
+      // 🔔 Disparar notificación push al admin
+      await enviarNotificacionPush(orderId);
+
+      const res = await fetch('/api/checkout/bold', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          totalCarrito: totalCarrito,
+          orderId: orderId,
+          cliente: formData,
+          items: cart,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || 'Ocurrió un error al generar la orden de pago.');
+      }
+    } catch (error) {
+      console.error('Error al iniciar el pago con Bold:', error);
+      alert('No se pudo conectar con el servidor de pagos.');
+    } finally {
+      setLoadingBold(false);
+    }
+  };
+
+  // 2. PAGO POR WHATSAPP
+  const handlePagarWhatsApp = async () => {
+    if (!validarCheckboxes()) return;
+
+    if (!formData.nombreApellido || !formData.celular || !formData.departamento || !formData.ciudad || !formData.direccion) {
+      alert('Por favor completa los campos obligatorios del formulario antes de continuar.');
+      return;
+    }
+
+    try {
+      setLoadingWp(true);
+
+      const orderId = `AM-WP-${Date.now()}`;
+
+      // Guardar pedido en Firestore con fecha y hora
+      await addDoc(collection(db, 'pedidos'), {
+        orderId,
+        cliente: formData,
+        items: cart,
+        total: totalCarrito,
+        metodoPago: 'WhatsApp',
+        estado: 'Pendiente WhatsApp',
+        fechaCreacion: serverTimestamp(),
+        fechaTexto: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
+      });
+
+      // 🔔 Disparar notificación push al admin
+      await enviarNotificacionPush(orderId);
+
+      // Construcción del mensaje formateado para WhatsApp
+      const listaProductos = cart
+        .map((item) => `• ${item.nombre} (x${item.cantidad}) - $${(item.precio * item.cantidad).toLocaleString('es-CO')} COP`)
+        .join('\n');
+
+      const mensaje = `Hola, vengo de la página web de Acomódate Muebles. Quiero terminar de pagar mi pedido.\n\n` +
+        `*Número de Orden:* ${orderId}\n\n` +
+        `*CLIENTE:* ${formData.nombreApellido}\n` +
+        `*Celular:* ${formData.celular}\n` +
+        `*Correo:* ${formData.correo || 'No especificado'}\n\n` +
+        `*DIRECCIÓN DE ENTREGA / TALLER:*\n` +
+        `*Ciudad / Depto:* ${formData.ciudad}, ${formData.departamento}\n` +
+        `*Dirección:* ${formData.direccion}\n` +
+        `*Indicaciones:* ${formData.indicaciones || 'Ninguna'}\n\n` +
+        `*MUEBLES SELECCIONADOS:*\n${listaProductos}\n\n` +
+        `*TOTAL A PAGAR:* $${totalCarrito.toLocaleString('es-CO')} COP`;
+
+      // Vaciar carrito local
+      vaciarCarrito();
+
+      // Redirigir a WhatsApp
+      const targetPhone = numeroWhatsapp || '573001234567'; // Número por defecto si no se ha configurado
+      const urlWp = `https://wa.me/${targetPhone}?text=${encodeURIComponent(mensaje)}`;
+      window.open(urlWp, '_blank');
+
+      setModalOpen(false);
+    } catch (error) {
+      console.error('Error al registrar pedido por WhatsApp:', error);
+      alert('Ocurrió un error al guardar tu pedido.');
+    } finally {
+      setLoadingWp(false);
+    }
+  };
 
   return (
-    <main className="w-full bg-[#FDFBF7] min-h-screen pt-32 pb-24 px-6">
+    <main className="w-full bg-[#FDFBF7] min-h-screen pt-32 pb-24 px-6 text-[#1A1A1A]">
       <div className="max-w-6xl mx-auto space-y-12">
         
         {/* ENCABEZADO */}
@@ -58,7 +228,7 @@ const handleCheckoutBold = async () => {
             </h1>
           </div>
           <Link
-            href="/"
+            href="/categoria/salas"
             className="text-xs uppercase tracking-widest text-gray-500 hover:text-black font-medium transition-colors"
           >
             ← Seguir Comprando
@@ -124,7 +294,7 @@ const handleCheckoutBold = async () => {
 
                     {/* CONTROLES DE CANTIDAD */}
                     <div className="flex items-center justify-between w-full sm:w-auto gap-6 border-t sm:border-t-0 pt-3 sm:pt-0 border-gray-50">
-                      <div className="flex items-center  rounded-xl ">
+                      <div className="flex items-center rounded-xl">
                         <button
                           type="button"
                           onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
@@ -146,8 +316,7 @@ const handleCheckoutBold = async () => {
                         </button>
                       </div>
 
-                      {/* SUB-TOTAL Y REMOVER */}
-                      <div className="text-right min-w-[100px]">
+                      <div className="text-right min-w-[110px]">
                         <p className="font-serif text-base font-bold text-[#1A1A1A]">
                           ${(item.precio * item.cantidad).toLocaleString('es-CO')} COP
                         </p>
@@ -159,16 +328,15 @@ const handleCheckoutBold = async () => {
                         </button>
                       </div>
                     </div>
-
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* CHECKOUT BOLD */}
+            {/* RESUMEN DE COMPRA */}
             <div className="lg:col-span-4 bg-white rounded-3xl p-8 border border-gray-100 shadow-sm space-y-6 h-fit">
               <h2 className="font-serif text-xl text-[#1A1A1A] border-b border-gray-100 pb-4">
-                Resumen del Pedido
+                Resumen de Compra
               </h2>
 
               <div className="space-y-3 text-xs text-gray-600 font-medium">
@@ -177,8 +345,8 @@ const handleCheckoutBold = async () => {
                   <span>${totalCarrito.toLocaleString('es-CO')} COP</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Envío / Despacho:</span>
-                  <span className="text-[#8C6D53]">A convenir</span>
+                  <span>Instalación y Envío:</span>
+                  <span className="text-[#8C6D53]">Se calcula en el checkout</span>
                 </div>
                 <hr className="border-gray-100 my-2" />
                 <div className="flex justify-between text-base font-serif font-bold text-[#1A1A1A] pt-2">
@@ -186,20 +354,252 @@ const handleCheckoutBold = async () => {
                   <span>${totalCarrito.toLocaleString('es-CO')} COP</span>
                 </div>
               </div>
-<button
-  type="button"
-  onClick={handleCheckoutBold}
-  disabled={loading}
-  className="w-full bg-[#1A1A1A] text-white hover:bg-[#8C6D53] transition-colors py-4 rounded-xl text-xs uppercase tracking-widest font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
->
-  <span>{loading ? 'PROCESANDO...' : 'PAGAR'}</span>
-</button>
+
+              <button
+                type="button"
+                onClick={handleProcederCheckout}
+                className="w-full bg-[#1A1A1A] text-white hover:bg-[#8C6D53] transition-colors py-4 rounded-xl text-xs uppercase tracking-[0.2em] font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-2"
+              >
+                <span>PROCEDER AL PAGO</span>
+              </button>
             </div>
 
           </div>
         )}
 
       </div>
+
+      {/* MODAL DE DATOS DE ENVÍO Y CONFIRMACIÓN */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="bg-[#FAF9F6] w-full max-w-2xl rounded-2xl p-6 md:p-8 shadow-2xl border border-gray-200 my-8 relative max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex justify-between items-center border-b border-gray-200 pb-4 mb-6">
+              <div>
+                <span className="text-[10px] font-sans tracking-[0.25em] uppercase text-[#8C6D53] block font-semibold">
+                  ACOMÓDATE MUEBLES · DESPACHO
+                </span>
+                <h3 className="font-serif text-xl text-[#1A1A1A]">
+                  Datos de Entrega y Fabricación
+                </h3>
+              </div>
+              <button
+                onClick={() => setModalOpen(false)}
+                className="text-xl font-light text-[#1A1A1A] hover:text-[#8C6D53]"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handlePagarBold} className="space-y-6 text-xs text-[#1A1A1A]">
+              
+              {/* ¿Quién lo recibe? */}
+              <div className="space-y-4">
+                <h4 className="font-semibold uppercase tracking-wider text-[#8C6D53] border-b border-gray-200 pb-1">
+                  1. ¿Quién recibe el pedido?
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1 font-semibold">Nombre y apellido *</label>
+                    <input
+                      type="text"
+                      name="nombreApellido"
+                      required
+                      value={formData.nombreApellido}
+                      onChange={handleChange}
+                      placeholder="Ej. Carlos Mendoza"
+                      className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 font-semibold">Celular con WhatsApp *</label>
+                    <input
+                      type="tel"
+                      name="celular"
+                      required
+                      value={formData.celular}
+                      onChange={handleChange}
+                      placeholder="Ej. 300 123 4567"
+                      className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Para coordinar la entrega y armado en sitio.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block mb-1 font-semibold">Correo electrónico (opcional)</label>
+                  <input
+                    type="email"
+                    name="correo"
+                    value={formData.correo}
+                    onChange={handleChange}
+                    placeholder="correo@ejemplo.com"
+                    className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                  />
+                </div>
+              </div>
+
+              {/* ¿A dónde lo llevamos? */}
+              <div className="space-y-4 pt-2">
+                <h4 className="font-semibold uppercase tracking-wider text-[#8C6D53] border-b border-gray-200 pb-1">
+                  2. ¿A dónde lo llevamos e instalamos?
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block mb-1 font-semibold">Departamento *</label>
+                    <select
+                      name="departamento"
+                      required
+                      value={formData.departamento}
+                      onChange={handleChange}
+                      className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                    >
+                      <option value="">Escoge uno</option>
+                      {DEPARTAMENTOS_COLOMBIA.map((dep) => (
+                        <option key={dep} value={dep}>{dep}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block mb-1 font-semibold">Ciudad / Municipio *</label>
+                    <input
+                      type="text"
+                      name="ciudad"
+                      required
+                      value={formData.ciudad}
+                      onChange={handleChange}
+                      placeholder="Ej. Medellín / Bogotá"
+                      className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block mb-1 font-semibold">Dirección exacta *</label>
+                  <input
+                    type="text"
+                    name="direccion"
+                    required
+                    value={formData.direccion}
+                    onChange={handleChange}
+                    placeholder="Ej. Cra 43A # 1-50 Apt 301"
+                    className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block mb-1 font-semibold">Indicaciones para el taller / entrega</label>
+                  <textarea
+                    name="indicaciones"
+                    rows={2}
+                    value={formData.indicaciones}
+                    onChange={handleChange}
+                    placeholder="Ej. Torre 2, apto 504, ascensor disponible."
+                    className="w-full p-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#8C6D53]"
+                  />
+                </div>
+              </div>
+
+              {/* Antes de pagar */}
+              <div className="space-y-3 pt-2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                <h4 className="font-semibold uppercase tracking-wider text-[#1A1A1A] mb-2">
+                  3. Declaraciones y Términos
+                </h4>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="aceptaTiempo"
+                    required
+                    checked={formData.aceptaTiempo}
+                    onChange={handleChange}
+                    className="mt-0.5 accent-[#1A1A1A]"
+                  />
+                  <span>Entiendo que los muebles se fabrican artesanalmente bajo pedido y el tiempo estimado es de 15 a 20 días hábiles.</span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="aceptaTerminos"
+                    required
+                    checked={formData.aceptaTerminos}
+                    onChange={handleChange}
+                    className="mt-0.5 accent-[#1A1A1A]"
+                  />
+                  <span>
+                    Leí y acepto los{' '}
+                    <Link
+                      href="/terminos-y-condiciones"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline font-semibold hover:text-[#8C6D53] transition-colors"
+                    >
+                      términos y condiciones
+                    </Link>
+                    .
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="aceptaTratamientoDatos"
+                    required
+                    checked={formData.aceptaTratamientoDatos}
+                    onChange={handleChange}
+                    className="mt-0.5 accent-[#1A1A1A]"
+                  />
+                  <span>
+                    Autorizo el tratamiento de mis datos para gestionar la garantía y fabricación.
+                  </span>
+                </label>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="esMayorEdad"
+                    required
+                    checked={formData.esMayorEdad}
+                    onChange={handleChange}
+                    className="mt-0.5 accent-[#1A1A1A]"
+                  />
+                  <span>Soy mayor de edad.</span>
+                </label>
+              </div>
+
+              {/* BOTONES FINALES DE PAGO */}
+              <div className="space-y-3 pt-2">
+                {/* BOTÓN 1: PAGO CON TARJETA / BOLD */}
+                <button
+                  type="submit"
+                  disabled={loadingBold || loadingWp}
+                  className="w-full bg-[#1A1A1A] text-white hover:bg-[#8C6D53] transition-colors py-4 rounded-xl text-xs uppercase tracking-[0.2em] font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <span>{loadingBold ? 'PROCESANDO PAGO...' : `PAGAR $${totalCarrito.toLocaleString('es-CO')} COP CON BOLD`}</span>
+                </button>
+
+                {/* BOTÓN 2: PAGO / PEDIDO POR WHATSAPP */}
+                <button
+                  type="button"
+                  onClick={handlePagarWhatsApp}
+                  disabled={loadingBold || loadingWp}
+                  className="w-full bg-[#25D366] text-white hover:bg-[#20ba5a] transition-colors py-4 rounded-xl text-xs uppercase tracking-[0.2em] font-semibold cursor-pointer shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <span>📱</span>
+                  <span>{loadingWp ? 'REGISTRANDO PEDIDO...' : 'TERMINAR PAGO CON WHATSAPP'}</span>
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
