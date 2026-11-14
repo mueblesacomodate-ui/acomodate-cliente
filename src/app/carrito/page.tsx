@@ -98,6 +98,7 @@ export default function CarritoPage() {
   };
 
   // 1. PAGO POR BOLD
+// 1. PAGO POR BOLD
   const handlePagarBold = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validarCheckboxes()) return;
@@ -130,7 +131,7 @@ export default function CarritoPage() {
         body: JSON.stringify({
           totalCarrito: totalCarrito,
           orderId: orderId,
-          cliente: formData,
+          customerEmail: formData.correo || 'cliente@acomodatemuebles.com', // 👈 CORRECCIÓN AQUÍ
           items: cart,
         }),
       });
