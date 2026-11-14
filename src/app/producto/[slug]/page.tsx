@@ -10,6 +10,10 @@ import { MedidasMueble } from '@/app/components/MedidasMueble';
 import { MaterialesMueble } from '@/app/components/MaterialesMueble';
 import { useCart } from '@/app/context/CartContext';
 
+interface ColorItem {
+  nombre: string;
+  codigoHex: string;
+}
 
 interface Producto {
   id: string;
@@ -22,6 +26,8 @@ interface Producto {
   descripcion?: string;
   medidas?: any;
   materiales?: any;
+  colores?: ColorItem[];
+  imagenesMateriales?: string[];
 }
 
 export default function ProductoDetallePage({
@@ -35,6 +41,9 @@ export default function ProductoDetallePage({
   const [producto, setProducto] = useState<Producto | null>(null);
   const [cargando, setCargando] = useState(true);
 
+  // Estado para el color seleccionado por el cliente
+  const [colorSeleccionado, setColorSeleccionado] = useState<string>('');
+
   // Hook global del carrito
   const { agregarAlCarrito } = useCart();
 
@@ -47,11 +56,26 @@ export default function ProductoDetallePage({
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setProducto({
+          const prodData: Producto = {
             id: docSnap.id,
-            ...data,
+            nombre: data.nombre || '',
+            categoria: data.categoria || '',
+            subcategoria: data.subcategoria || '',
+            precio: data.precio || 0,
+            imagen: data.imagen || '',
+            descripcion: data.descripcion || '',
             imagenes: data.imagenes || [data.imagen],
-          } as Producto);
+            medidas: data.medidas || {},
+            materiales: data.materiales || {},
+            colores: data.colores || [],
+            imagenesMateriales: data.imagenesMateriales || [],
+          };
+          setProducto(prodData);
+
+          // Seleccionar por defecto el primer color si existe
+          if (prodData.colores && prodData.colores.length > 0) {
+            setColorSeleccionado(prodData.colores[0].nombre);
+          }
         } else {
           setProducto(null);
         }
@@ -88,10 +112,10 @@ export default function ProductoDetallePage({
             El mueble que buscas no está disponible o ha sido retirado del catálogo.
           </p>
           <Link
-            href="/categoria/salas"
+            href="/"
             className="inline-block bg-[#1A1A1A] text-white text-xs uppercase tracking-widest px-6 py-3 rounded-md hover:bg-gray-800 transition-colors"
           >
-            Volver a la colección
+            Volver al inicio
           </Link>
         </div>
       </main>
@@ -103,7 +127,8 @@ export default function ProductoDetallePage({
     ? producto.precio
     : parseFloat(String(producto.precio).replace(/[^0-9.-]+/g, '')) || 0;
 
-  const mensajeWhatsApp = `Hola, estoy interesado en cotizar el producto *${producto.nombre}* visto en la tienda online.`;
+  const detalleColorTexto = colorSeleccionado ? ` (Color: ${colorSeleccionado})` : '';
+  const mensajeWhatsApp = `Hola, estoy interesado en cotizar el producto *${producto.nombre}*${detalleColorTexto} visto en la tienda online.`;
   const urlWhatsApp = `https://wa.me/message/D6QREGANQXL3O1?text=${encodeURIComponent(mensajeWhatsApp)}`;
 
   const handleAgregarAlCarrito = () => {
@@ -112,7 +137,9 @@ export default function ProductoDetallePage({
       nombre: producto.nombre,
       precio: precioNumerico,
       imagen: producto.imagen,
+      color: colorSeleccionado || 'Estándar',
     });
+    alert('¡Producto agregado al carrito con éxito!');
   };
 
   return (
@@ -174,6 +201,54 @@ export default function ProductoDetallePage({
                   <p className="text-sm text-gray-600 leading-relaxed font-light">
                     {producto.descripcion}
                   </p>
+                </div>
+              )}
+
+              {/* SECCIÓN DE COLORES DISPONIBLES */}
+              {producto.colores && producto.colores.length > 0 && (
+                <div className="mb-6 space-y-3">
+                  <label className="block text-xs uppercase tracking-widest text-gray-400 font-medium">
+                    Color Seleccionado: <span className="text-[#1A1A1A] font-bold">{colorSeleccionado}</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2.5">
+                    {producto.colores.map((col, idx) => {
+                      const esSeleccionado = colorSeleccionado === col.nombre;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setColorSeleccionado(col.nombre)}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs transition-all cursor-pointer ${
+                            esSeleccionado
+                              ? 'border-[#8C6D53] bg-[#8C6D53]/5 ring-1 ring-[#8C6D53]'
+                              : 'border-gray-200 hover:border-gray-300 bg-white'
+                          }`}
+                        >
+                          <span
+                            className="w-4 h-4 rounded-full border border-gray-300 shadow-sm flex-shrink-0"
+                            style={{ backgroundColor: col.codigoHex }}
+                          />
+                          <span className="font-medium text-[#1A1A1A]">{col.nombre}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* SECCIÓN DE MUESTRAS DE MATERIALES / TELAS */}
+              {producto.imagenesMateriales && producto.imagenesMateriales.length > 0 && (
+                <div className="mb-6 space-y-3">
+                  <h3 className="text-xs uppercase tracking-widest text-gray-400 font-medium">
+                    Muestras de Telas y Materiales Disponibles
+                  </h3>
+                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
+                    {producto.imagenesMateriales.map((matUrl, idx) => (
+                      <div key={idx} className="relative w-full h-16 rounded-lg overflow-hidden border border-gray-200 shadow-sm bg-gray-50">
+                        <Image src={matUrl} alt={`Muestra ${idx + 1}`} fill className="object-cover" />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
