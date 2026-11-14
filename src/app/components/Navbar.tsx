@@ -42,7 +42,6 @@ export default function Navbar() {
           <Link href="/categoria/salas" className="hover:text-[#5A3E2B] transition-colors">Salas</Link>
           <Link href="/categoria/comedores" className="hover:text-[#5A3E2B] transition-colors">Comedores</Link>
           <Link href="/categoria/dormitorios" className="hover:text-[#5A3E2B] transition-colors">Dormitorios</Link>
-          <Link href="/categoria/sillas" className="hover:text-[#5A3E2B] transition-colors">Sillas y Poltronas</Link>
           <Link href="/categoria/accesorios" className="hover:text-[#5A3E2B] transition-colors">Accesorios</Link>
           <Link href="/a-medida" className="hover:text-[#5A3E2B] transition-colors text-[#5A3E2B] font-semibold">A Medida</Link>
           <Link href="/proyectos" className="hover:text-[#5A3E2B] transition-colors">Proyectos</Link>
@@ -117,13 +116,6 @@ export default function Navbar() {
             className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
           >
             Dormitorios
-          </Link>
-          <Link 
-            href="/categoria/sillas" 
-            onClick={() => setIsOpen(false)}
-            className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
-          >
-            Sillas y Poltronas
           </Link>
           <Link 
             href="/categoria/accesorios" 
