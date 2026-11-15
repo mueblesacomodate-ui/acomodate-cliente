@@ -1,24 +1,54 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/app/context/CartContext';
-import NextImage from 'next/image';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface CategoriaNav {
+  id: string;
+  nombre: string;
+  slug: string;
+  orden?: number;
+}
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [categorias, setCategorias] = useState<CategoriaNav[]>([]);
   const { cart } = useCart();
 
-  // Calcular total de productos agregados al carrito
   const totalItems = cart.reduce((acc, item) => acc + item.cantidad, 0);
-
   const toggleMenu = () => setIsOpen(!isOpen);
+
+  // Cargar categorías dinámicamente desde Firestore
+  useEffect(() => {
+    async function cargarCategoriasNavbar() {
+      try {
+        const q = query(collection(db, 'configuracion_categorias'), orderBy('orden', 'asc'));
+        const querySnapshot = await getDocs(q);
+        const lista: CategoriaNav[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          lista.push({
+            id: doc.id,
+            nombre: data.nombre || doc.id,
+            slug: data.slug || doc.id,
+          });
+        });
+        setCategorias(lista);
+      } catch (error) {
+        console.error('Error al cargar categorías en el Navbar:', error);
+      }
+    }
+    cargarCategoriasNavbar();
+  }, []);
 
   return (
     <header className="w-full bg-[#F5EFE7]/95 border-b border-[#D8C7B4]/40 sticky top-0 z-50 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
         
-        {/* LOGOTIPO SVG CON ESPACIADO DERECHO */}
+        {/* LOGOTIPO */}
         <Link href="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 mr-6 lg:mr-10">
           <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center">
             <img
@@ -37,27 +67,25 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* Menú de Escritorio */}
+        {/* Menú de Escritorio Dinámico */}
         <nav className="hidden lg:flex items-center gap-4 xl:gap-6 text-[11px] xl:text-xs tracking-wider uppercase font-medium text-[#1F1F1F]/80">
-          <Link href="/categoria/salas" className="hover:text-[#5A3E2B] transition-colors">Salas</Link>
-          <Link href="/categoria/comedores" className="hover:text-[#5A3E2B] transition-colors">Comedores</Link>
-          <Link href="/categoria/dormitorios" className="hover:text-[#5A3E2B] transition-colors">Dormitorios</Link>
-          <Link href="/categoria/accesorios" className="hover:text-[#5A3E2B] transition-colors">Accesorios</Link>
+          {categorias.map((cat) => (
+            <Link key={cat.id} href={`/categoria/${cat.slug}`} className="hover:text-[#5A3E2B] transition-colors">
+              {cat.nombre}
+            </Link>
+          ))}
           <Link href="/a-medida" className="hover:text-[#5A3E2B] transition-colors text-[#5A3E2B] font-semibold">A Medida</Link>
           <Link href="/proyectos" className="hover:text-[#5A3E2B] transition-colors">Proyectos</Link>
           <Link href="/nosotros" className="hover:text-[#5A3E2B] transition-colors">Nosotros</Link>
         </nav>
 
-        {/* Botón Carrito, Cotización y Hamburguesa */}
+        {/* Acciones */}
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-          
-          {/* BOTÓN / ICONO CARRITO */}
           <Link
             href="/carrito"
             className="relative flex items-center gap-2 bg-[#1F1F1F] text-[#F5EFE7] px-3.5 sm:px-4 py-2.5 rounded-full text-xs font-sans tracking-wider uppercase hover:bg-[#5A3E2B] transition-all duration-300 shadow-sm"
           >
             <span className="text-sm">🛒</span>
-
             {totalItems > 0 && (
               <span className="absolute -top-1 -right-1 bg-[#5A3E2B] text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border-2 border-[#F5EFE7] shadow-xs animate-scale-in">
                 {totalItems}
@@ -65,7 +93,6 @@ export default function Navbar() {
             )}
           </Link>
 
-          {/* Botón WhatsApp Cotizar (Escritorio) */}
           <a 
             href="https://wa.me/message/D6QREGANQXL3O1" 
             target="_blank" 
@@ -75,7 +102,6 @@ export default function Navbar() {
             Cotiza tu mueble
           </a>
 
-          {/* Botón Hamburguesa para Móviles */}
           <button 
             onClick={toggleMenu}
             className="lg:hidden text-[#1F1F1F] focus:outline-none p-2 rounded-lg hover:bg-[#D8C7B4]/20 transition-colors"
@@ -93,37 +119,19 @@ export default function Navbar() {
 
       </div>
 
-      {/* Menú Desplegable para Móviles */}
+      {/* Menú Móvil Dinámico */}
       {isOpen && (
         <div className="lg:hidden absolute top-20 left-0 w-full bg-[#F5EFE7] border-b border-[#D8C7B4]/40 shadow-xl py-6 px-8 flex flex-col gap-4 transition-all">
-          <Link 
-            href="/categoria/salas" 
-            onClick={() => setIsOpen(false)}
-            className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
-          >
-            Salas
-          </Link>
-          <Link 
-            href="/categoria/comedores" 
-            onClick={() => setIsOpen(false)}
-            className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
-          >
-            Comedores
-          </Link>
-          <Link 
-            href="/categoria/dormitorios" 
-            onClick={() => setIsOpen(false)}
-            className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
-          >
-            Dormitorios
-          </Link>
-          <Link 
-            href="/categoria/accesorios" 
-            onClick={() => setIsOpen(false)}
-            className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
-          >
-            Accesorios
-          </Link>
+          {categorias.map((cat) => (
+            <Link 
+              key={cat.id}
+              href={`/categoria/${cat.slug}`} 
+              onClick={() => setIsOpen(false)}
+              className="text-sm tracking-widest uppercase font-medium text-[#1F1F1F]/80 hover:text-[#5A3E2B]"
+            >
+              {cat.nombre}
+            </Link>
+          ))}
           <Link 
             href="/a-medida" 
             onClick={() => setIsOpen(false)}
